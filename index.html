@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PWA Media Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: black;
+}
+#viewer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  touch-action: none;
+}
+.slide {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.slide img, .slide video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+#feedInput {
+  position: absolute;
+  z-index: 99999;
+  top: 20px; left: 50%;
+  transform: translateX(-50%);
+  padding: 10px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+  width: 80%;
+}
+#loadBtn {
+  margin-top: 10px;
+  width: 80%;
+}
+</style>
+</head>
+<body>
+
+<!-- Feed input UI -->
+<div id="feedInput">
+  <input id="feedUrl" style="width:100%;padding:8px;" placeholder="Paste JSON feed URL">
+  <button id="loadBtn" style="width:100%;padding:10px;margin-top:5px;">Load Feed</button>
+</div>
+
+<div id="viewer"></div>
+
+<script>
+// ------------------------------
+// Global State
+// ------------------------------
+let feed = [];
+let index = 0;
+let viewer = document.getElementById("viewer");
+
+// ------------------------------
+// Load Feed
+// ------------------------------
+document.getElementById("loadBtn").onclick = async () => {
+  let url = document.getElementById("feedUrl").value.trim();
+  if (!url) return alert("Enter a URL");
+
+  try {
+    let res = await fetch(url);
+    feed = (await res.json()).items || [];
+    if (!feed.length) {
+      alert("Feed has no items");
+      return;
+    }
+    document.getElementById("feedInput").style.display = "none";
+    index = 0;
+    showSlide(index);
+  } catch (e) {
+    alert("Failed to load feed: " + e);
+  }
+};
+
+// ------------------------------
+// Render a slide
+// ------------------------------
+function createSlide(item) {
+  let div = document.createElement("div");
+  div.className = "slide";
+
+  if (item.type === "video") {
+    let v = document.createElement("video");
+    v.src = item.url;
+    v.autoplay = true;
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
+    div.appendChild(v);
+  } else {
+    let img = document.createElement("img");
+    img.src = item.url;
+    div.appendChild(img);
+  }
+
+  return div;
+}
+
+function showSlide(i) {
+  viewer.innerHTML = "";
+  viewer.appendChild(createSlide(feed[i]));
+  preload(i + 1);
+}
+
+function preload(i) {
+  if (i >= feed.length) return;
+  let item = feed[i];
+  if (item.type === "video") {
+    let v = document.createElement("video");
+    v.src = item.url;
+  } else {
+    let img = new Image();
+    img.src = item.url;
+  }
+}
+
+// ------------------------------
+// Swipe handling
+// ------------------------------
+let startY = 0;
+
+viewer.addEventListener("touchstart", e => {
+  startY = e.touches[0].clientY;
+});
+
+viewer.addEventListener("touchend", e => {
+  let endY = e.changedTouches[0].clientY;
+  let dy = endY - startY;
+
+  if (Math.abs(dy) < 50) return;
+
+  if (dy < 0 && index < feed.length - 1) {
+    index++;
+    showSlide(index);
+  } else if (dy > 0 && index > 0) {
+    index--;
+    showSlide(index);
+  }
+});
+
+// Install service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
