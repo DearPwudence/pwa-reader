@@ -1,544 +1,171 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>PWA Stream Viewer — Prototype</title>
+<meta charset="UTF-8">
+<title>PWA Media Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
-  :root{
-    --bg:#0b0b0b;
-    --fg:#fff;
-    --accent:#06f;
-  }
-  html,body{
-    height:100%;
-    margin:0;
-    background:var(--bg);
-    color:var(--fg);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
-    -webkit-font-smoothing:antialiased;
-    -webkit-text-size-adjust:100%;
-    touch-action:pan-y;
-    overscroll-behavior-y: contain;
-  }
-
-  /* Top control panel (URL / JSON) */
-  #controls{
-    position:fixed;
-    top:12px;
-    left:12px;
-    right:12px;
-    z-index:40;
-    display:flex;
-    gap:8px;
-    align-items:center;
-    background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25));
-    padding:8px;
-    border-radius:10px;
-    backdrop-filter: blur(6px);
-  }
-  #controls input[type="text"], #controls textarea {
-    background:transparent;
-    color:var(--fg);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:8px;
-    border-radius:6px;
-    font-size:14px;
-  }
-  #controls button{
-    background:var(--accent);
-    color:#fff;
-    border:0;
-    padding:8px 10px;
-    border-radius:6px;
-    font-weight:600;
-  }
-  #status{
-    position:fixed;
-    left:12px; bottom:12px;
-    z-index:50;
-    color:rgba(255,255,255,0.9);
-    font-size:13px;
-    background:rgba(0,0,0,0.4);
-    padding:8px 10px;
-    border-radius:8px;
-    max-width:70%;
-  }
-
-  /* Viewer area */
-  #viewer{
-    position:fixed;
-    inset:0;
-    display:flex;
-    flex-direction:column;
-    align-items:stretch;
-    justify-content:center;
-    overflow:hidden;
-    -webkit-user-select:none;
-  }
-  .slide {
-    position:absolute;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    transition: transform 360ms cubic-bezier(.2,.9,.3,1), opacity 200ms;
-    will-change: transform, opacity;
-    background: #000;
-  }
-  .slide.hidden { opacity:0; pointer-events:none; }
-  .slide .media {
-    max-width:100%;
-    max-height:100%;
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    display:block;
-    background:#000;
-  }
-
-  /* slide labels */
-  .caption {
-    position:absolute;
-    left:14px;
-    bottom:24px;
-    right:14px;
-    color:#fff;
-    text-shadow:0 2px 10px rgba(0,0,0,0.6);
-    font-size:16px;
-  }
-
-  /* small hint arrow */
-  #hint {
-    position:fixed;
-    right:12px;
-    top:50%;
-    transform:translateY(-50%);
-    z-index:40;
-    color:rgba(255,255,255,0.6);
-    font-size:12px;
-    writing-mode:vertical-rl;
-    text-orientation:mixed;
-    user-select:none;
-  }
-
-  /* transitions for vertical navigation */
-  .anim-up { transform: translateY(-110%); }
-  .anim-down { transform: translateY(110%); }
-  .center { transform: translateY(0); opacity:1; pointer-events:auto; }
-
-  /* small top-left sample label */
-  #sampleNote { position:fixed; right:12px; top:12px; color:#ddd; font-size:12px; z-index:60; }
-
-  /* Loading indicator */
-  .loader {
-    width:48px; height:48px; border-radius:50%;
-    border:4px solid rgba(255,255,255,0.08);
-    border-top-color:var(--accent);
-    animation: spin 1s linear infinite;
-    position:absolute;
-  }
-  @keyframes spin { to{ transform:rotate(360deg);} }
-
-  /* Make sure videos don't show default controls */
-  video { outline:none; border:0; }
-
-  /* Prevent zoom double tap on iOS */
-  html,body,input,button { -webkit-touch-callout:none; -webkit-user-select:none; -ms-user-select:none; }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: black;
+}
+#viewer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  touch-action: none;
+}
+.slide {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.slide img, .slide video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+#feedInput {
+  position: absolute;
+  z-index: 99999;
+  top: 20px; left: 50%;
+  transform: translateX(-50%);
+  padding: 10px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+  width: 80%;
+}
+#loadBtn {
+  margin-top: 10px;
+  width: 80%;
+}
 </style>
 </head>
 <body>
-  <div id="controls" aria-hidden="false">
-    <input id="feedUrl" type="text" placeholder="Paste JSON feed URL OR paste raw JSON below" style="flex:1" />
-    <button id="loadBtn">Load</button>
-    <button id="useSample">Use sample</button>
-    <button id="pasteJson">Paste JSON</button>
-  </div>
 
-  <div id="viewer" tabindex="0" aria-live="polite">
-    <!-- slides will be created dynamically -->
-  </div>
+<!-- Feed input UI -->
+<div id="feedInput">
+  <input id="feedUrl" style="width:100%;padding:8px;" placeholder="Paste JSON feed URL">
+  <button id="loadBtn" style="width:100%;padding:10px;margin-top:5px;">Load Feed</button>
+</div>
 
-  <div id="hint">swipe<br>up</div>
-  <div id="status" hidden>Ready</div>
-  <div id="sampleNote">Prototype — plain JS</div>
+<div id="viewer"></div>
 
 <script>
-(() => {
-  // ------------------------
-  // Simple single-file PWA prototype
-  // ------------------------
-  // Key ideas implemented:
-  // - JSON feed with "items": [{type: "video"|"image", url, caption}]
-  // - Single active slide, two recycled slides for next/prev
-  // - Touch swipe up/down navigation + keyboard
-  // - Autoplay MP4 with muted playsinline loop
-  // - Preload of next item's media
-  // - Basic error handling for CORS / fetch failure
-  // ------------------------
+// ------------------------------
+// Global State
+// ------------------------------
+let feed = [];
+let index = 0;
+let viewer = document.getElementById("viewer");
 
-  const viewer = document.getElementById('viewer');
-  const loadBtn = document.getElementById('loadBtn');
-  const feedUrlInput = document.getElementById('feedUrl');
-  const useSampleBtn = document.getElementById('useSample');
-  const pasteJsonBtn = document.getElementById('pasteJson');
-  const statusEl = document.getElementById('status');
+// ------------------------------
+// Load Feed
+// ------------------------------
+document.getElementById("loadBtn").onclick = async () => {
+  let url = document.getElementById("feedUrl").value.trim();
+  if (!url) return alert("Enter a URL");
 
-  // Sample inlined feed (works even without network)
-  const sampleFeed = {
-    items: [
-      { type: "video", url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", caption: "Sample flower loop (mp4)" },
-      { type: "image", url: "https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?w=1600&q=80&auto=format&fit=crop", caption: "Sample image — Unsplash" },
-      { type: "video", url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/earth.mp4", caption: "Earth loop (mp4)" },
-      { type: "image", url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1600&q=80&auto=format&fit=crop", caption: "Another photo" }
-    ]
-  };
+  try {
+    let res = await fetch(url);
+    feed = (await res.json()).items || [];
+    if (!feed.length) {
+      alert("Feed has no items");
+      return;
+    }
+    document.getElementById("feedInput").style.display = "none";
+    index = 0;
+    showSlide(index);
+  } catch (e) {
+    alert("Failed to load feed: " + e);
+  }
+};
 
-  let feed = { items: [] };
-  let idx = 0;
-  let slides = []; // will hold three slide DOM nodes: prev, current, next
-  let touchStartY = null;
-  let touchDeltaY = 0;
-  let isAnimating = false;
+// ------------------------------
+// Render a slide
+// ------------------------------
+function createSlide(item) {
+  let div = document.createElement("div");
+  div.className = "slide";
 
-  function setStatus(text, show=true) {
-    statusEl.textContent = text;
-    statusEl.hidden = !show;
+  if (item.type === "video") {
+    let v = document.createElement("video");
+    v.src = item.url;
+    v.autoplay = true;
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
+    div.appendChild(v);
+  } else {
+    let img = document.createElement("img");
+    img.src = item.url;
+    div.appendChild(img);
   }
 
-  // Create 3 slide containers that we will recycle
-  function createSlides() {
-    viewer.innerHTML = '';
-    slides = [];
-    for (let i = 0; i < 3; i++) {
-      const s = document.createElement('div');
-      s.className = 'slide hidden';
-      // container for caption
-      const caption = document.createElement('div');
-      caption.className = 'caption';
-      s.appendChild(caption);
-      viewer.appendChild(s);
-      slides.push(s);
-    }
-    // center one is slides[1]
-    slides[0].style.transform = 'translateY(-110%)'; // previous above
-    slides[1].style.transform = 'translateY(0)'; // current
-    slides[2].style.transform = 'translateY(110%)'; // next below
-    slides[0].classList.add('hidden');
-    slides[1].classList.add('hidden');
-    slides[2].classList.add('hidden');
+  return div;
+}
+
+function showSlide(i) {
+  viewer.innerHTML = "";
+  viewer.appendChild(createSlide(feed[i]));
+  preload(i + 1);
+}
+
+function preload(i) {
+  if (i >= feed.length) return;
+  let item = feed[i];
+  if (item.type === "video") {
+    let v = document.createElement("video");
+    v.src = item.url;
+  } else {
+    let img = new Image();
+    img.src = item.url;
   }
+}
 
-  // Helper: remove existing media from a slide
-  function clearSlide(slide) {
-    // Remove any <img> or <video>
-    const media = slide.querySelector('.media');
-    if (media) {
-      if (media.tagName === 'VIDEO') {
-        try { media.pause(); } catch(e){}
-        media.src = '';
-        media.removeAttribute('src');
-      }
-      media.remove();
-    }
+// ------------------------------
+// Swipe handling
+// ------------------------------
+let startY = 0;
+
+viewer.addEventListener("touchstart", e => {
+  startY = e.touches[0].clientY;
+});
+
+viewer.addEventListener("touchend", e => {
+  let endY = e.changedTouches[0].clientY;
+  let dy = endY - startY;
+
+  if (Math.abs(dy) < 50) return;
+
+  if (dy < 0 && index < feed.length - 1) {
+    index++;
+    showSlide(index);
+  } else if (dy > 0 && index > 0) {
+    index--;
+    showSlide(index);
   }
+});
 
-  // Render an item into a given slide element (but do not autoplay unless active)
-  function renderItemIntoSlide(item, slide, isActive=false) {
-    clearSlide(slide);
-    slide.classList.remove('hidden');
-    slide.querySelector('.caption').textContent = item.caption || '';
-    if (item.type === 'video') {
-      const v = document.createElement('video');
-      v.className = 'media';
-      v.src = item.url;
-      // important flags for iOS autoplay
-      v.autoplay = false; // we will programmatically play on active
-      v.muted = true;
-      v.loop = true;
-      v.playsInline = true;
-      v.setAttribute('playsinline', '');
-      v.setAttribute('webkit-playsinline', '');
-      v.preload = 'metadata';
-      v.controls = false;
-      v.setAttribute('aria-label', item.caption || 'video');
-      // small safety: allow inline playback on iOS
-      slide.appendChild(v);
-
-      // Start playing if active
-      if (isActive) {
-        // try to play; some browsers require play() after user gesture,
-        // but muted+playsinline normally allows autoplay
-        const p = v.play();
-        if (p && p.catch) p.catch(()=>{/* ignore play errors */});
-      }
-    } else { // image
-      const img = document.createElement('img');
-      img.className = 'media';
-      img.src = item.url;
-      img.alt = item.caption || 'image';
-      img.loading = 'eager';
-      slide.appendChild(img);
-    }
-  }
-
-  function getItem(i) {
-    if (!feed.items || feed.items.length === 0) return null;
-    const len = feed.items.length;
-    // clamp circular (optional) - for now clamp to bounds
-    if (i < 0 || i >= len) return null;
-    return feed.items[i];
-  }
-
-  // Show current (idx) in center slide, prev in slides[0], next in slides[2]
-  function refreshSlides() {
-    if (!slides.length) createSlides();
-    isAnimating = false;
-
-    const prevItem = getItem(idx - 1);
-    const curItem = getItem(idx);
-    const nextItem = getItem(idx + 1);
-
-    // Prev
-    if (prevItem) {
-      renderItemIntoSlide(prevItem, slides[0], false);
-      slides[0].style.transform = 'translateY(-110%)';
-      slides[0].classList.remove('anim-up','anim-down');
-    } else {
-      clearSlide(slides[0]);
-      slides[0].classList.add('hidden');
-    }
-
-    // Current
-    if (curItem) {
-      renderItemIntoSlide(curItem, slides[1], true);
-      slides[1].style.transform = 'translateY(0)';
-      slides[1].classList.remove('anim-up','anim-down');
-      slides[1].classList.add('center');
-    } else {
-      clearSlide(slides[1]);
-      slides[1].classList.add('hidden');
-    }
-
-    // Next
-    if (nextItem) {
-      renderItemIntoSlide(nextItem, slides[2], false);
-      slides[2].style.transform = 'translateY(110%)';
-      slides[2].classList.remove('anim-up','anim-down');
-    } else {
-      clearSlide(slides[2]);
-      slides[2].classList.add('hidden');
-    }
-
-    // Pause any other videos (ensures only current plays)
-    for (const s of slides) {
-      const v = s.querySelector('video');
-      if (v) {
-        if (s === slides[1]) {
-          // ensure playing
-          const p = v.play();
-          if (p && p.catch) p.catch(()=>{ /* ignore */});
-        } else {
-          try { v.pause(); } catch(e){ }
-        }
-      }
-    }
-
-    // Preload the "next next" item by creating an invisible preloader (helps a bit)
-    const future = getItem(idx + 2);
-    if (future) prefetchMedia(future);
-    // Also prefetch prev-prev optionally
-    const past = getItem(idx - 2);
-    if (past) prefetchMedia(past);
-  }
-
-  function prefetchMedia(item) {
-    // For video: create a tiny link rel=prefetch or create a hidden element
-    if (!item) return;
-    if (item.type === 'video') {
-      // Create invisible video with preload=metadata; remove later
-      const v = document.createElement('video');
-      v.style.display = 'none';
-      v.preload = 'metadata';
-      v.src = item.url;
-      document.body.appendChild(v);
-      // remove after short while to avoid memory hog
-      setTimeout(()=>{ try{ v.remove(); }catch(e){} }, 20_000);
-    } else {
-      // Image: create Image object
-      const img = new Image();
-      img.src = item.url;
-      // letting browser cache it
-    }
-  }
-
-  // Animate to next (direction: 'up' means go to idx+1)
-  function go(direction) {
-    if (isAnimating) return;
-    if (direction === 'up') {
-      if (idx >= feed.items.length - 1) { setStatus('End of feed', true); return; }
-      isAnimating = true;
-      // slide center up, next moves to center
-      slides[1].classList.add('anim-up');
-      slides[2].classList.add('center');
-      slides[2].style.transform = 'translateY(0)';
-      slides[1].style.transform = 'translateY(-110%)';
-      // after animation, rotate DOM roles: prev<-center, center<-next, next becomes reused
-      setTimeout(() => {
-        idx = idx + 1;
-        // Recycle: reorder slide elements in array to maintain positions
-        // old slides: [prev, cur, next]
-        // after move up: new prev = old cur, new cur = old next, new next = old prev (will be reused)
-        slides = [slides[1], slides[2], slides[0]];
-        // ensure transforms reset
-        slides[0].style.transform = 'translateY(-110%)';
-        slides[1].style.transform = 'translateY(0)';
-        slides[2].style.transform = 'translateY(110%)';
-        refreshSlides();
-      }, 380);
-    } else if (direction === 'down') {
-      if (idx <= 0) { setStatus('Start of feed', true); return; }
-      isAnimating = true;
-      // slide center down, prev moves to center
-      slides[1].classList.add('anim-down');
-      slides[0].classList.add('center');
-      slides[0].style.transform = 'translateY(0)';
-      slides[1].style.transform = 'translateY(110%)';
-      setTimeout(() => {
-        idx = idx - 1;
-        // Recycle: new prev = old next, new cur = old prev, new next = old cur
-        slides = [slides[2], slides[0], slides[1]];
-        slides[0].style.transform = 'translateY(-110%)';
-        slides[1].style.transform = 'translateY(0)';
-        slides[2].style.transform = 'translateY(110%)';
-        refreshSlides();
-      }, 380);
-    }
-  }
-
-  // Touch handling
-  viewer.addEventListener('touchstart', (ev) => {
-    if (ev.touches.length !== 1) return;
-    touchStartY = ev.touches[0].clientY;
-    touchDeltaY = 0;
-  }, {passive:true});
-
-  viewer.addEventListener('touchmove', (ev) => {
-    if (touchStartY === null) return;
-    touchDeltaY = ev.touches[0].clientY - touchStartY;
-    // Could implement "drag" visual feedback here by translating slides slightly
-  }, {passive:true});
-
-  viewer.addEventListener('touchend', (ev) => {
-    if (touchStartY === null) return;
-    const threshold = window.innerHeight * 0.15;
-    if (touchDeltaY < -threshold) {
-      go('up');
-    } else if (touchDeltaY > threshold) {
-      go('down');
-    }
-    touchStartY = null;
-    touchDeltaY = 0;
-  }, {passive:true});
-
-  // Keyboard for testing on desktop: ArrowUp -> prev, ArrowDown -> next
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'ArrowDown' || ev.key === 'PageDown') {
-      ev.preventDefault();
-      go('up');
-    } else if (ev.key === 'ArrowUp' || ev.key === 'PageUp') {
-      ev.preventDefault();
-      go('down');
-    }
-  });
-
-  // Load JSON feed from URL (CORS may block)
-  async function loadFeedFromUrl(url) {
-    setStatus('Loading feed...');
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) throw new Error('Fetch failed: ' + res.status);
-      const j = await res.json();
-      if (!Array.isArray(j.items)) throw new Error('Invalid feed: missing items[]');
-      feed = j;
-      idx = 0;
-      createSlides();
-      refreshSlides();
-      setStatus('Feed loaded', true);
-    } catch (err) {
-      console.error(err);
-      setStatus('Feed load error: ' + (err && err.message ? err.message : 'Unknown'), true);
-    }
-  }
-
-  // Load raw JSON pasted by user
-  function loadFeedFromJSONText(text) {
-    try {
-      const j = JSON.parse(text);
-      if (!Array.isArray(j.items)) throw new Error('Invalid feed: missing items[]');
-      feed = j;
-      idx = 0;
-      createSlides();
-      refreshSlides();
-      setStatus('Feed loaded (from JSON)', true);
-    } catch (err) {
-      console.error(err);
-      setStatus('JSON parse error: ' + (err && err.message ? err.message : 'Unknown'), true);
-    }
-  }
-
-  loadBtn.addEventListener('click', async () => {
-    const v = feedUrlInput.value.trim();
-    if (!v) { setStatus('Please paste a feed URL or click "Use sample"', true); return; }
-    // quick heuristic: if it looks like JSON (starts with {), treat as raw JSON
-    if (v.startsWith('{') || v.startsWith('[')) {
-      loadFeedFromJSONText(v);
-    } else {
-      await loadFeedFromUrl(v);
-    }
-  });
-
-  useSampleBtn.addEventListener('click', () => {
-    feed = structuredClone(sampleFeed);
-    idx = 0;
-    createSlides();
-    refreshSlides();
-    setStatus('Using sample feed', true);
-  });
-
-  pasteJsonBtn.addEventListener('click', async () => {
-    // Try to use clipboard (user gesture required)
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        loadFeedFromJSONText(text);
-      } else {
-        setStatus('Clipboard empty', true);
-      }
-    } catch (err) {
-      setStatus('Clipboard access failed or not allowed', true);
-    }
-  });
-
-  // initialize with sample feed
-  feed = structuredClone(sampleFeed);
-  createSlides();
-  refreshSlides();
-  setStatus('Ready');
-
-  // Focus viewer for keyboard keys
-  viewer.focus();
-
-  // Optional: prevent the double-tap to zoom on iOS by disabling zoom gestures if desirable
-  // (Not added here to keep default behaviour)
-
-  // Note:
-  // - For real deployment, you should add a manifest.json, service worker, icons and an install flow.
-  // - Many cloud hosts disallow cross-origin JSON fetch; if feed host doesn't set CORS, you'll need
-  //   a tiny proxy (serverless) that forwards the feed with Access-Control-Allow-Origin: *
-})();
+// Install service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
 </script>
+
 </body>
 </html>
