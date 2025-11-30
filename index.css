@@ -2,10 +2,15 @@ html, body {
     margin: 0;
     padding: 0;
     height: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     overflow: hidden;
-    background: black;
-    
+    background: black; 
     overscroll-behavior: none;
+}
+
+* {
+    overscroll-behavior-x: none;
 }
 
 #feedInput {
@@ -60,3 +65,10 @@ width: 80%;
     user-select: none;
     display: block;
 }
+
+input[type="text"] {
+    font-size: 18px;
+    transform: scale(0.9);
+    transform-origin: left center;
+}
+
