@@ -63,6 +63,30 @@ function preload(i) {
   }
 }
 
+function renderSlides() {
+    viewer.innerHTML = "";
+
+    currentSlideEl = createSlide(feed[index]);
+    currentSlideEl.style.transform = "translateY(0px)";
+    viewer.appendChild(currentSlideEl);
+
+    if (index < feed.length - 1) {
+        nextSlideEl = createSlide(feed[index + 1]);
+        nextSlideEl.style.transform = "translateY(100vh)";
+        viewer.appendChild(nextSlideEl);
+    } else {
+        nextSlideEl = null;
+    }
+
+    if (index > 0) {
+        prevSlideEl = createSlide(feed[index - 1]);
+        prevSlideEl.style.transform = "translateY(-100vh)";
+        viewer.appendChild(prevSlideEl);
+    } else {
+        prevSlideEl = null;
+    }
+}
+
 function showSlide(i) {
     index = i;
     renderSlides();
