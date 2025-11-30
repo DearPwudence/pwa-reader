@@ -1,7 +1,7 @@
 {
     "items": [
-      { "type": "image", "url": "https://media.discordapp.net/attachments/669319503867543573/1442433615098150995/a605b865e39d33a2ca0fd2f9a8ade0299925dbb5.gif?ex=6926133c&is=6924c1bc&hm=4f1e818892a5f4e76c8f98407e8503acdf1d43625c6f4180c1d865c2fb0e73bb", "caption": "Sample flower loop (mp4)" },
-      { "type": "image", "url": "https://media.discordapp.net/attachments/669319503867543573/1442483364996190229/videotogif_2025.04.04_19.27.35.gif?ex=692598d2&is=69244752&hm=bdf4e43355e6192d4f77b3d967f033c12b0a33ae4451534c82fb88f4260b2879", "caption": "Sample image — Unsplash" },
+      { "type": "image", "url": "https://media.discordapp.net/attachments/669319503867543573/1444179246397259867/IMG_4570.gif?ex=692c6cfb&is=692b1b7b&hm=35e6bcd4c777d3478749d871e67d98b9fe912d63d57ca5e8b0ebc04e4e72a30e&=", "caption": "Sample flower loop (mp4)" },
+      { "type": "image", "url": "https://media.discordapp.net/attachments/669319503867543573/1124536668964261940/DD27321C-259B-4117-A61B-BBAF7B622ABF.gif?ex=692c5da2&is=692b0c22&hm=0af7c50061f4465f62472b08a8feb23fa2692f0becc32d67b6383ba5a592cf5a&=", "caption": "Sample image — Unsplash" },
       { "type": "image", "url": "https://media.discordapp.net/attachments/669319503867543573/1444393675734913034/Tumblr_l_155532294464365.gif?ex=692c8bef&is=692b3a6f&hm=975d4e452143d97742b6edf64d71ab17e075466fc9ed07ab69182dcb8539ec13", "caption": "Sample image — Unsplash" }
     ]
 }
