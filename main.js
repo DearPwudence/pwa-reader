@@ -103,7 +103,7 @@ let isDragging = false;
 let startTime = 0;       // for velocity
 let velocity = 0;
 
-const container = document.querySelector("#slides");
+const container = document.querySelector("#viewer");
 
 function setTransition(enabled) {
     container.style.transition = enabled ? "transform 0.25s cubic-bezier(.15,.75,.25,1)" : "none";
